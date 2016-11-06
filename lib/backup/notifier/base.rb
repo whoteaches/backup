@@ -12,19 +12,19 @@ module Backup
       # When set to true, the user will be notified by email
       # when a backup process ends without raising any exceptions
       attr_accessor :on_success
-      alias :notify_on_success? :on_success
+      alias notify_on_success? on_success
 
       ##
       # When set to true, the user will be notified by email
       # when a backup process is successful, but has warnings
       attr_accessor :on_warning
-      alias :notify_on_warning? :on_warning
+      alias notify_on_warning? on_warning
 
       ##
       # When set to true, the user will be notified by email
       # when a backup process raises an exception before finishing
       attr_accessor :on_failure
-      alias :notify_on_failure? :on_failure
+      alias notify_on_failure? on_failure
 
       ##
       # Number of times to retry failed attempts to send notification.
@@ -57,7 +57,7 @@ module Backup
         @max_retries    ||= 10
         @retry_waitsec  ||= 30
         @message        ||= lambda do |model, data|
-          "[#{ data[:status][:message] }] #{ model.label } (#{ model.trigger })"
+          "[#{data[:status][:message]}] #{model.label} (#{model.trigger})"
         end
       end
 
@@ -75,12 +75,12 @@ module Backup
                  end
 
         if status
-          Logger.info "Sending notification using #{ notifier_name }..."
+          Logger.info "Sending notification using #{notifier_name}..."
           with_retries { notify!(status) }
         end
 
       rescue Exception => err
-        Logger.error Error.wrap(err, "#{ notifier_name } Failed!")
+        Logger.error Error.wrap(err, "#{notifier_name} Failed!")
       end
 
       private
@@ -93,7 +93,7 @@ module Backup
           retries += 1
           raise if retries > max_retries
 
-          Logger.info Error.wrap(err, "Retry ##{ retries } of #{ max_retries }.")
+          Logger.info Error.wrap(err, "Retry ##{retries} of #{max_retries}.")
           sleep(retry_waitsec)
           retry
         end
@@ -102,24 +102,24 @@ module Backup
       ##
       # Return the notifier name, with Backup namespace removed
       def notifier_name
-        self.class.to_s.sub('Backup::', '')
+        self.class.to_s.sub("Backup::", "")
       end
 
       ##
       # Return status data for message creation
       def status_data_for(status)
         {
-          :success => {
-            :message => 'Backup::Success',
-            :key => :success
+          success: {
+            message: "Backup::Success",
+            key: :success
           },
-          :warning => {
-            :message => 'Backup::Warning',
-            :key => :warning
+          warning: {
+            message: "Backup::Warning",
+            key: :warning
           },
-          :failure => {
-            :message => 'Backup::Failure',
-            :key => :failure
+          failure: {
+            message: "Backup::Failure",
+            key: :failure
           }
         }[status]
       end

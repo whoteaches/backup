@@ -34,19 +34,19 @@ module Backup
       def initialize(model, storage_id = nil, &block)
         @model = model
         @package = model.package
-        @storage_id = storage_id.to_s.gsub(/\W/, '_') if storage_id
+        @storage_id = storage_id.to_s.gsub(/\W/, "_") if storage_id
 
         load_defaults!
         instance_eval(&block) if block_given?
       end
 
       def perform!
-        Logger.info "#{ storage_name } Started..."
+        Logger.info "#{storage_name} Started..."
         transfer!
         if respond_to?(:cycle!, true) && (keep.to_i > 0 || keep.is_a?(Time))
           cycle!
         end
-        Logger.info "#{ storage_name } Finished!"
+        Logger.info "#{storage_name} Finished!"
       end
 
       private
@@ -57,13 +57,12 @@ module Backup
         path.empty? ? File.join(pkg.trigger, pkg.time) :
                       File.join(path, pkg.trigger, pkg.time)
       end
-      alias :remote_path_for :remote_path
+      alias remote_path_for remote_path
 
       def storage_name
-        @storage_name ||= self.class.to_s.sub('Backup::', '') +
-            (storage_id ? " (#{ storage_id })" : '')
+        @storage_name ||= self.class.to_s.sub("Backup::", "") +
+          (storage_id ? " (#{storage_id})" : "")
       end
-
     end
   end
 end

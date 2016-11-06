@@ -71,7 +71,7 @@ module Backup
     class GPG < Base
       class Error < Backup::Error; end
 
-      MODES = [:asymmetric, :symmetric, :both]
+      MODES = [:asymmetric, :symmetric, :both].freeze
 
       ##
       # Sets the mode of operation.
@@ -104,7 +104,7 @@ module Backup
       attr_reader :mode
       def mode=(mode)
         @mode = mode.to_sym
-        raise Error, "'#{ @mode }' is not a valid mode." unless MODES.include?(@mode)
+        raise Error, "'#{@mode}' is not a valid mode." unless MODES.include?(@mode)
       end
 
       ##
@@ -411,10 +411,10 @@ module Backup
         prepare
 
         if mode_options.empty?
-          raise Error, "Encryption could not be performed for mode '#{ mode }'"
+          raise Error, "Encryption could not be performed for mode '#{mode}'"
         end
 
-        yield "#{ utility(:gpg) } #{ base_options } #{ mode_options }", '.gpg'
+        yield "#{utility(:gpg)} #{base_options} #{mode_options}", ".gpg"
 
       ensure
         cleanup
@@ -426,7 +426,7 @@ module Backup
       # Remove any temporary directories and reset all instance variables.
       #
       def prepare
-        FileUtils.rm_rf(@tempdirs, :secure => true) if @tempdirs
+        FileUtils.rm_rf(@tempdirs, secure: true) if @tempdirs
         @tempdirs = []
         @base_options = nil
         @mode_options = nil
@@ -434,7 +434,7 @@ module Backup
         @user_keys = nil
         @system_identifiers = nil
       end
-      alias :cleanup :prepare
+      alias cleanup prepare
 
       ##
       # Returns the options needed for the gpg command line which are
@@ -444,12 +444,12 @@ module Backup
       #
       def base_options
         @base_options ||= begin
-          opts = ['--no-tty']
+          opts = ["--no-tty"]
           path = setup_gpg_homedir
-          opts << "--homedir '#{ path }'" if path
+          opts << "--homedir '#{path}'" if path
           path = setup_gpg_config
-          opts << "--options '#{ path }'" if path
-          opts.join(' ')
+          opts << "--options '#{path}'" if path
+          opts.join(" ")
         end
       end
 
@@ -470,18 +470,19 @@ module Backup
         path = File.expand_path(gpg_homedir)
         FileUtils.mkdir_p(path)
         FileUtils.chown(Config.user, nil, path)
-        FileUtils.chmod(0700, path)
+        FileUtils.chmod(0o700, path)
 
-        unless %w{ pubring.gpg secring.gpg trustdb.gpg }.
-            all? {|name| File.exist? File.join(path, name) }
-          run("#{ utility(:gpg) } --homedir '#{ path }' -K 2>&1 >/dev/null")
+        unless %w(pubring.gpg secring.gpg trustdb.gpg)
+               .all? { |name| File.exist? File.join(path, name) }
+          run("#{utility(:gpg)} --homedir '#{path}' -K 2>&1 >/dev/null")
         end
 
         path
 
       rescue => err
         raise Error.wrap(
-            err, "Failed to create or set permissions for #gpg_homedir")
+          err, "Failed to create or set permissions for #gpg_homedir"
+        )
       end
 
       ##
@@ -501,10 +502,10 @@ module Backup
       def setup_gpg_config
         return false unless gpg_config
 
-        dir = Dir.mktmpdir('backup-gpg_config', Config.tmp_path)
+        dir = Dir.mktmpdir("backup-gpg_config", Config.tmp_path)
         @tempdirs << dir
-        file = Tempfile.open('backup-gpg_config', dir)
-        file.write gpg_config.gsub(/^[[:blank:]]+/, '')
+        file = Tempfile.open("backup-gpg_config", dir)
+        file.write gpg_config.gsub(/^[[:blank:]]+/, "")
         file.close
 
         check_gpg_config(file.path)
@@ -524,7 +525,7 @@ module Backup
       #
       def check_gpg_config(path)
         ret = run(
-          "#{ utility(:gpg) } --options '#{ path }' --gpgconf-test 2>&1"
+          "#{utility(:gpg)} --options '#{path}' --gpgconf-test 2>&1"
         ).chomp
         raise ret unless ret.empty?
       end
@@ -537,7 +538,7 @@ module Backup
         @mode_options ||= begin
           s_opts = symmetric_options if mode != :asymmetric
           a_opts = asymmetric_options if mode != :symmetric
-          [s_opts, a_opts].compact.join(' ')
+          [s_opts, a_opts].compact.join(" ")
         end
       end
 
@@ -555,7 +556,7 @@ module Backup
         end
 
         if path && File.exist?(path)
-          "-c --passphrase-file '#{ path }'"
+          "-c --passphrase-file '#{path}'"
         else
           Logger.warn("Symmetric encryption options could not be set.")
           nil
@@ -570,9 +571,9 @@ module Backup
       def setup_passphrase_file
         return false if passphrase.to_s.empty?
 
-        dir = Dir.mktmpdir('backup-gpg_passphrase', Config.tmp_path)
+        dir = Dir.mktmpdir("backup-gpg_passphrase", Config.tmp_path)
         @tempdirs << dir
-        file = Tempfile.open('backup-gpg_passphrase', dir)
+        file = Tempfile.open("backup-gpg_passphrase", dir)
         file.write passphrase.to_s
         file.close
 
@@ -595,7 +596,7 @@ module Backup
         else
           # skip trust database checks
           "-e --trust-model always " +
-              user_recipients.map {|r| "-r '#{ r }'" }.join(' ')
+            user_recipients.map { |r| "-r '#{r}'" }.join(" ")
         end
       end
 
@@ -623,7 +624,7 @@ module Backup
                 import_key(identifier, key)
               else
                 Logger.warn(
-                  "No public key was found in #keys for '#{ identifier }'"
+                  "No public key was found in #keys for '#{identifier}'"
                 )
                 nil
               end
@@ -640,10 +641,12 @@ module Backup
       def user_keys
         @user_keys ||= begin
           _keys = keys || {}
-          ret = Hash[_keys.map {|k,v| [clean_identifier(k), v] }]
-          Logger.warn(
-            "Duplicate public key identifiers were detected in #keys."
-          ) if ret.keys.count != _keys.keys.count
+          ret = Hash[_keys.map { |k, v| [clean_identifier(k), v] }]
+          if ret.keys.count != _keys.keys.count
+            Logger.warn(
+              "Duplicate public key identifiers were detected in #keys."
+            )
+          end
           ret
         end
       end
@@ -654,8 +657,8 @@ module Backup
       # and wrap email addresses in <> to perform exact matching.
       #
       def clean_identifier(str)
-        str = str.to_s.gsub(/[[:blank:]]+/, '')
-        str =~ /@/ ? "<#{ str.gsub(/(<|>)/,'') }>" : str.upcase
+        str = str.to_s.gsub(/[[:blank:]]+/, "")
+        str =~ /@/ ? "<#{str.gsub(/(<|>)/, "")}>" : str.upcase
       end
 
       ##
@@ -664,22 +667,23 @@ module Backup
       # Note that errors raised by Cli::Helpers#run may also be rescued here.
       #
       def import_key(identifier, key)
-        file = Tempfile.open('backup-gpg_import', Config.tmp_path)
-        file.write(key.gsub(/^[[:blank:]]+/, ''))
+        file = Tempfile.open("backup-gpg_import", Config.tmp_path)
+        file.write(key.gsub(/^[[:blank:]]+/, ""))
         file.close
         ret = run(
-          "#{ utility(:gpg) } #{ base_options } " +
-          "--keyid-format 0xlong --import '#{ file.path }' 2>&1"
+          "#{utility(:gpg)} #{base_options} " \
+          "--keyid-format 0xlong --import '#{file.path}' 2>&1"
         )
         file.delete
 
         keyid = ret.match(/ 0x(\w{16})/).to_a[1]
-        raise "GPG Returned:\n#{ ret.gsub(/^\s*/, '  ') }" unless keyid
+        raise "GPG Returned:\n#{ret.gsub(/^\s*/, "  ")}" unless keyid
         keyid
 
       rescue => err
         Logger.warn Error.wrap(
-            err, "Public key import failed for '#{ identifier }'")
+          err, "Public key import failed for '#{identifier}'"
+        )
         nil
       end
 
@@ -692,7 +696,7 @@ module Backup
         @system_identifiers ||= begin
           skip_key = false
           data = run(
-            "#{ utility(:gpg) } #{ base_options } " +
+            "#{utility(:gpg)} #{base_options} " \
             "--with-colons --fixed-list-mode --fingerprint"
           )
           data.lines.map do |line|
@@ -701,10 +705,10 @@ module Backup
             # process public key record
             if line =~ /^pub:/
               validity, keyid, capabilities =
-                  line.split(':').values_at(1, 4, 11)
+                line.split(":").values_at(1, 4, 11)
               # skip keys marked as revoked ('r'), expired ('e'),
               # invalid ('i') or disabled ('D')
-              if validity[0,1] =~ /(r|e|i)/ || capabilities =~ /D/
+              if validity[0, 1] =~ /(r|e|i)/ || capabilities =~ /D/
                 skip_key = true
                 next nil
               else
@@ -718,22 +722,24 @@ module Backup
 
               # process UID records for the current public key
               if line =~ /^uid:/
-                validity, userid = line.split(':').values_at(1, 9)
+                validity, userid = line.split(":").values_at(1, 9)
                 # skip records marked as revoked ('r'), expired ('e')
                 # or invalid ('i')
                 if validity !~ /(r|e|i)/
                   # return the last email found in user id string,
                   # since this includes user supplied comments.
                   # return nil if no email found.
-                  email, str = nil, userid
+                  email = nil
+                  str = userid
                   while match = str.match(/<.+?@.+?>/)
-                    email, str = match[0], match.post_match
+                    email = match[0]
+                    str = match.post_match
                   end
                   next email
                 end
               # return public key's fingerprint
               elsif line =~ /^fpr:/
-                next line.split(':')[9]
+                next line.split(":")[9]
               end
 
               nil # ignore any other lines
@@ -741,7 +747,6 @@ module Backup
           end.flatten.compact
         end
       end
-
     end
   end
 end
